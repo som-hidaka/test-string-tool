@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>入力フォームテスト文字列ツール</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #333; }
+  header { background: #2c3e50; color: #fff; padding: 16px 24px; }
+  header h1 { font-size: 18px; margin-bottom: 2px; }
+  header p { font-size: 12px; color: #aaa; }
+  .container { max-width: 1000px; margin: 24px auto; padding: 0 16px; }
+  .step-label { font-size: 12px; font-weight: bold; color: #3498db; margin-bottom: 8px; letter-spacing: 1px; }
+  .field-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 24px; }
+  .field-btn { padding: 12px 18px; border: 2px solid #ddd; background: #fff; border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 100px; transition: all 0.15s; }
+  .field-btn:hover { border-color: #3498db; }
+  .field-btn.active { border-color: #3498db; background: #ebf5fb; }
+  .field-btn .icon { font-size: 22px; }
+  .field-btn .name { font-size: 12px; color: #555; }
+  .cat-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+  .cat-tab { padding: 6px 14px; border: 1px solid #ddd; background: #fff; border-radius: 20px; font-size: 12px; cursor: pointer; }
+  .cat-tab:hover { border-color: #3498db; color: #3498db; }
+  .cat-tab.active { background: #3498db; color: #fff; border-color: #3498db; }
+  .string-list { background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); overflow: hidden; }
+  .string-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #f0f0f0; }
+  .string-item:last-child { border-bottom: none; }
+  .string-item:hover { background: #f9f9f9; }
+  .cat-badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; }
+  .badge-boundary { background: #d5f5e3; color: #1e8449; }
+  .badge-special  { background: #fdebd0; color: #935116; }
+  .badge-sql      { background: #f9ebea; color: #922b21; }
+  .badge-xss      { background: #f9ebea; color: #922b21; }
+  .badge-japanese { background: #d6eaf8; color: #1a5276; }
+  .badge-emoji    { background: #fef9e7; color: #7d6608; }
+  .badge-unicode  { background: #e8daef; color: #6c3483; }
+  .string-meta { flex: 1; min-width: 0; }
+  .string-label { font-size: 13px; font-weight: bold; color: #2c3e50; }
+  .string-value { font-family: 'Courier New', monospace; font-size: 12px; background: #f4f6f8; border: 1px solid #e0e0e0; border-radius: 3px; padding: 3px 7px; word-break: break-all; color: #444; margin: 3px 0; white-space: pre-wrap; }
+  .string-desc { font-size: 11px; color: #888; }
+  .copy-btn { padding: 5px 14px; border: 1px solid #3498db; background: #fff; color: #3498db; border-radius: 4px; font-size: 12px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .copy-btn:hover { background: #3498db; color: #fff; }
+  .copy-btn.copied { background: #27ae60; border-color: #27ae60; color: #fff; }
+  .empty { text-align: center; color: #aaa; padding: 40px; }
+  .result-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .result-count { font-size: 13px; color: #666; }
+  .step-block { margin-bottom: 20px; }
+  .divider { border: none; border-top: 1px solid #e0e0e0; margin: 20px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⌨️ 入力フォームテスト文字列ツール</h1>
+  <p>テストしたいフィールドを選んで、文字列をコピーして使ってください</p>
+</header>
+<div class="container">
+  <div class="step-block">
+    <div class="step-label">STEP 1 ― テストしたいフィールドを選ぶ</div>
+    <div class="field-grid" id="fieldGrid"></div>
+  </div>
+  <hr class="divider">
+  <div class="step-block" id="step2" style="display:none">
+    <div class="step-label">STEP 2 ― 境界値の条件を入力する（任意）</div>
+    <div style="background:#fff;border-radius:8px;padding:16px 20px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,0.1);">
+      <div style="font-size:13px;color:#555;margin-bottom:10px">入力すると、境界値付近の文字列を自動生成します</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:12px;color:#555">最小文字数</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" id="minLen" min="0" placeholder="例: 8" style="width:90px;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:14px">
+            <select id="minType" style="padding:7px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px">
+              <option value="half">半角</option>
+              <option value="full">全角</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <label style="font-size:12px;color:#555">最大文字数</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="number" id="maxLen" min="1" placeholder="例: 100" style="width:90px;padding:7px 10px;border:1px solid #ccc;border-radius:5px;font-size:14px">
+            <select id="maxType" style="padding:7px 8px;border:1px solid #ccc;border-radius:5px;font-size:13px">
+              <option value="half">半角</option>
+              <option value="full">全角</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="applyBoundary()" style="padding:7px 18px;background:#3498db;color:#fff;border:none;border-radius:5px;font-size:13px;cursor:pointer;font-weight:bold">生成</button>
+        <button onclick="clearBoundary()" style="padding:7px 14px;background:#fff;color:#888;border:1px solid #ccc;border-radius:5px;font-size:13px;cursor:pointer">クリア</button>
+      </div>
+      <div id="boundaryPreview" style="margin-top:12px"></div>
+    </div>
+    <div class="step-label">STEP 3 ― カテゴリで絞り込む（任意）</div>
+    <div class="cat-tabs" id="catTabs"></div>
+    <div class="result-bar">
+      <span class="result-count" id="resultCount"></span>
+    </div>
+    <div class="string-list" id="stringList"></div>
+  </div>
+</div>
+<script>
+var FIELDS = [
+  {id:'text',     name:'テキスト',  icon:'📝'},
+  {id:'email',    name:'メール',    icon:'📧'},
+  {id:'tel',      name:'電話番号',  icon:'📞'},
+  {id:'number',   name:'数値',      icon:'🔢'},
+  {id:'password', name:'パスワード',icon:'🔑'},
+  {id:'url',      name:'URL',       icon:'🔗'},
+  {id:'search',   name:'検索',      icon:'🔍'},
+  {id:'all',      name:'すべて',    icon:'📋'},
+];
+
+var CATS = [
+  {id:'all',      label:'すべて'},
+  {id:'boundary', label:'📏 境界値'},
+  {id:'special',  label:'🔣 特殊文字'},
+  {id:'sql',      label:'💉 SQLインジェクション'},
+  {id:'xss',      label:'🕷 XSS'},
+  {id:'japanese', label:'🇯🇵 日本語・全角'},
+  {id:'emoji',    label:'😀 絵文字'},
+  {id:'unicode',  label:'🔤 Unicode'},
+];
+
+var ALL_ITEMS = [
+  // 境界値
+  {cat:'boundary', label:'空文字',            value:'',              desc:'何も入力しない状態',         fields:['text','email','tel','number','password','url','search']},
+  {cat:'boundary', label:'半角スペースのみ',  value:' ',             desc:'空白のみの入力',             fields:['text','email','search']},
+  {cat:'boundary', label:'1文字',             value:'a',             desc:'最小文字数',                 fields:['text','password','search']},
+  {cat:'boundary', label:'全角1文字',         value:'あ',            desc:'全角での最小文字数',         fields:['text','search']},
+  {cat:'boundary', label:'255文字',           value:rep('a',255),    desc:'よくある最大長の境界',       fields:['text','password','search']},
+  {cat:'boundary', label:'256文字',           value:rep('a',256),    desc:'255文字制限の超過',          fields:['text','password','search']},
+  {cat:'boundary', label:'1000文字',          value:rep('a',1000),   desc:'大量文字入力',               fields:['text','search']},
+  {cat:'boundary', label:'数値: 0',           value:'0',             desc:'ゼロ値',                     fields:['number']},
+  {cat:'boundary', label:'数値: -1',          value:'-1',            desc:'負の値',                     fields:['number']},
+  {cat:'boundary', label:'INT最大値',         value:'2147483647',    desc:'32bit整数の最大値',          fields:['number']},
+  {cat:'boundary', label:'INT最大値+1',       value:'2147483648',    desc:'INT最大値超過',              fields:['number']},
+  {cat:'boundary', label:'小数',              value:'0.000001',      desc:'小数点以下が多い値',         fields:['number']},
+  {cat:'boundary', label:'正常（ハイフンあり）', value:'090-1234-5678', desc:'一般的な形式',            fields:['tel']},
+  {cat:'boundary', label:'正常（ハイフンなし）', value:'09012345678', desc:'ハイフンなし',              fields:['tel']},
+  {cat:'boundary', label:'国際形式',          value:'+81-90-1234-5678', desc:'国際電話番号',            fields:['tel']},
+  {cat:'boundary', label:'桁数不足',          value:'090-123',       desc:'桁数不足',                   fields:['tel']},
+  {cat:'boundary', label:'正常URL (HTTPS)',   value:'https://example.com', desc:'正常値',               fields:['url']},
+  {cat:'boundary', label:'正常URL (HTTP)',    value:'http://example.com',  desc:'HTTP（非HTTPS）',      fields:['url']},
+  {cat:'boundary', label:'パスワード 1文字',  value:'a',             desc:'最短パスワード',             fields:['password']},
+  {cat:'boundary', label:'パスワード 8文字',  value:'Passw0rd',      desc:'一般的な最小長',             fields:['password']},
+  // 特殊文字
+  {cat:'special',  label:'改行 (LF)',         value:'line1\nline2',  desc:'改行を含む入力',             fields:['text','search']},
+  {cat:'special',  label:'改行 (CRLF)',       value:'line1\r\nline2',desc:'Windowsの改行',              fields:['text','search']},
+  {cat:'special',  label:'タブ文字',          value:'col1\tcol2',   desc:'タブ区切り',                  fields:['text','search']},
+  {cat:'special',  label:'HTMLタグ',          value:'<b>test</b>',  desc:'HTMLとして解釈されるか確認',  fields:['text','search']},
+  {cat:'special',  label:'シングルクォート',  value:"it's a test",  desc:'SQLで問題になりやすい',       fields:['text','search','email']},
+  {cat:'special',  label:'記号まとめ',        value:'!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', desc:'印字可能な全記号', fields:['text','search','password']},
+  {cat:'special',  label:'前後スペース',      value:'  test  ',     desc:'トリム処理の確認',            fields:['text','email','search']},
+  {cat:'special',  label:'Null文字',          value:'test\x00null', desc:'Null文字の混入',              fields:['text','search']},
+  {cat:'special',  label:'正常なメール',      value:'test@example.com',      desc:'正常値',             fields:['email']},
+  {cat:'special',  label:'@なし',             value:'testexample.com',        desc:'フォーマットエラー', fields:['email']},
+  {cat:'special',  label:'@が2つ',            value:'test@@example.com',      desc:'フォーマットエラー', fields:['email']},
+  {cat:'special',  label:'ドメインなし',      value:'test@',                  desc:'フォーマットエラー', fields:['email']},
+  {cat:'special',  label:'先頭ドット',        value:'.test@example.com',      desc:'RFC違反',            fields:['email']},
+  {cat:'special',  label:'連続ドット',        value:'test..test@example.com', desc:'RFC違反',            fields:['email']},
+  {cat:'special',  label:'文字混入（電話）',  value:'090-ABCD-5678',          desc:'アルファベット混入', fields:['tel']},
+  {cat:'special',  label:'スキームなし',      value:'example.com',            desc:'スキーム省略',       fields:['url']},
+  {cat:'special',  label:'localhost',         value:'http://localhost',        desc:'ローカルホスト',     fields:['url']},
+  {cat:'special',  label:'fileスキーム',      value:'file:///etc/passwd',     desc:'fileスキーム',       fields:['url']},
+  {cat:'special',  label:'記号のみ（PW）',    value:'!@#$%^&*()',             desc:'記号のみ',            fields:['password']},
+  {cat:'special',  label:'スペース含む（PW）',value:'pass word 123',          desc:'スペースを含む',      fields:['password']},
+  // SQL
+  {cat:'sql', label:'基本パターン',  value:"' OR '1'='1",            desc:'最も基本的なSQLi',      fields:['text','email','search','password']},
+  {cat:'sql', label:'コメントアウト',value:"admin'--",               desc:'後続SQL無効化',          fields:['text','email','password']},
+  {cat:'sql', label:'UNION句',       value:"' UNION SELECT 1,2,3--", desc:'UNION句による情報取得', fields:['text','search']},
+  {cat:'sql', label:'DROP TABLE',    value:"'; DROP TABLE users;--", desc:'テーブル削除の試行',     fields:['text','search','password']},
+  {cat:'sql', label:'OR条件',        value:"x' OR 1=1--",            desc:'認証回避',               fields:['email','password']},
+  // XSS
+  {cat:'xss', label:'scriptタグ',      value:'<script>alert("XSS")<\/script>', desc:'基本的なXSS',      fields:['text','search']},
+  {cat:'xss', label:'img onerror',     value:'<img src=x onerror=alert(1)>',   desc:'imgイベントハンドラ',fields:['text','search']},
+  {cat:'xss', label:'svgタグ',         value:'<svg onload=alert(1)>',          desc:'SVGを使ったXSS',   fields:['text','search']},
+  {cat:'xss', label:'javascriptスキーム', value:'javascript:alert(1)',         desc:'URLフィールド向け', fields:['url','text']},
+  {cat:'xss', label:'イベントハンドラ', value:'" onmouseover="alert(1)',       desc:'属性値エスケープ確認',fields:['text','search']},
+  // 日本語
+  {cat:'japanese', label:'ひらがな',      value:'あいうえおかきくけこ', desc:'ひらがな',          fields:['text','search']},
+  {cat:'japanese', label:'カタカナ',      value:'アイウエオカキクケコ', desc:'カタカナ',          fields:['text','search']},
+  {cat:'japanese', label:'漢字',          value:'日本語テスト入力確認', desc:'漢字',              fields:['text','search']},
+  {cat:'japanese', label:'全角英数字',    value:'ａｂｃ１２３',         desc:'全角英数字',        fields:['text','search']},
+  {cat:'japanese', label:'半角カタカナ',  value:'ｱｲｳｴｵ',               desc:'半角カタカナ',      fields:['text','search']},
+  {cat:'japanese', label:'環境依存文字',  value:'髙﨑𠮷野家',            desc:'旧字体・難読漢字',  fields:['text','search']},
+  {cat:'japanese', label:'全角スペース',  value:'\u3000',               desc:'全角スペースのみ',  fields:['text','search']},
+  {cat:'japanese', label:'日本語メール',  value:'テスト@example.com',   desc:'日本語ローカルパート', fields:['email']},
+  {cat:'japanese', label:'全角数字（電話）', value:'０９０−１２３４−５６７８', desc:'全角入力', fields:['tel']},
+  // 絵文字
+  {cat:'emoji', label:'基本絵文字',         value:'😀🎉🔥💯',              desc:'一般的な絵文字',       fields:['text','search']},
+  {cat:'emoji', label:'国旗絵文字',         value:'🇯🇵🇺🇸🇬🇧',       desc:'国旗（サロゲートペア）',fields:['text','search']},
+  {cat:'emoji', label:'肌色バリエーション', value:'👋🏻👋🏼👋🏽👋🏾👋🏿', desc:'修飾子付き絵文字',    fields:['text','search']},
+  {cat:'emoji', label:'複合絵文字',         value:'👨‍👩‍👧‍👦',         desc:'ZWJシーケンス',        fields:['text','search']},
+  {cat:'emoji', label:'絵文字+テキスト',    value:'テスト😀入力🔥確認',    desc:'絵文字とテキストの混在',fields:['text','search']},
+  // Unicode
+  {cat:'unicode', label:'ゼロ幅スペース', value:'test\u200btest',  desc:'見えない文字の混入',    fields:['text','search','email']},
+  {cat:'unicode', label:'RTL制御文字',    value:'test\u202ereverse',desc:'右から左への制御',      fields:['text','search']},
+  {cat:'unicode', label:'BOM',            value:'\uFEFFtest',       desc:'バイトオーダーマーク',  fields:['text','search']},
+  {cat:'unicode', label:'ラテン拡張',     value:'àáâãäåæçèéêë',    desc:'非ASCII文字',           fields:['text','search','email']},
+  {cat:'unicode', label:'アラビア語',     value:'مرحبا بالعالم',   desc:'RTL言語',               fields:['text','search']},
+  {cat:'unicode', label:'キリル文字',     value:'Привет мир',       desc:'ロシア語',              fields:['text','search']},
+  {cat:'unicode', label:'サロゲートペア', value:'𠮷𠮷𠮷',            desc:'BMP外の文字',           fields:['text','search']},
+  {cat:'unicode', label:'ホモグリフ',     value:'раyраl',           desc:'キリル文字混入（paypalに見える）', fields:['text','email','url']},
+];
+
+function rep(c, n) { return c.repeat(n); }
+
+var customBoundaryItems = [];
+
+function applyBoundary() {
+  var minLen = parseInt(document.getElementById('minLen').value);
+  var maxLen = parseInt(document.getElementById('maxLen').value);
+  var minType = document.getElementById('minType').value;
+  var maxType = document.getElementById('maxType').value;
+  customBoundaryItems = [];
+  var preview = document.getElementById('boundaryPreview');
+  var rows = [];
+  var allFields = ['text','email','tel','number','password','url','search'];
+
+  function makeChar(type) { return type === 'full' ? 'あ' : 'a'; }
+  function typeLabel(type) { return type === 'full' ? '全角' : '半角'; }
+
+  if (!isNaN(minLen) && minLen >= 0) {
+    var ch = makeChar(minType);
+    var tl = typeLabel(minType);
+    if (minLen > 0) customBoundaryItems.push({cat:'boundary', label:'最小-1 (' + (minLen-1) + '文字・' + tl + ')', value:rep(ch, minLen-1), desc:'最小文字数を下回る', fields:allFields});
+    customBoundaryItems.push({cat:'boundary', label:'最小 (' + minLen + '文字・' + tl + ')', value:rep(ch, minLen), desc:'最小文字数ちょうど', fields:allFields});
+    customBoundaryItems.push({cat:'boundary', label:'最小+1 (' + (minLen+1) + '文字・' + tl + ')', value:rep(ch, minLen+1), desc:'最小文字数を上回る', fields:allFields});
+    rows.push('最小(' + tl + '): ' + (minLen > 0 ? (minLen-1)+'文字 / ' : '') + minLen+'文字 / '+(minLen+1)+'文字');
+  }
+  if (!isNaN(maxLen) && maxLen >= 1) {
+    var ch2 = makeChar(maxType);
+    var tl2 = typeLabel(maxType);
+    customBoundaryItems.push({cat:'boundary', label:'最大-1 (' + (maxLen-1) + '文字・' + tl2 + ')', value:rep(ch2, maxLen-1), desc:'最大文字数を下回る', fields:allFields});
+    customBoundaryItems.push({cat:'boundary', label:'最大 (' + maxLen + '文字・' + tl2 + ')', value:rep(ch2, maxLen), desc:'最大文字数ちょうど', fields:allFields});
+    customBoundaryItems.push({cat:'boundary', label:'最大+1 (' + (maxLen+1) + '文字・' + tl2 + ')', value:rep(ch2, maxLen+1), desc:'最大文字数を超過', fields:allFields});
+    rows.push('最大(' + tl2 + '): '+(maxLen-1)+'文字 / '+maxLen+'文字 / '+(maxLen+1)+'文字');
+  }
+  if (rows.length) {
+    preview.innerHTML = '<div style="font-size:12px;color:#27ae60;background:#eafaf1;border-radius:4px;padding:6px 10px">✅ ' + rows.join('　／　') + ' を生成しました</div>';
+  } else {
+    preview.innerHTML = '<div style="font-size:12px;color:#e74c3c">最小文字数か最大文字数を入力してください</div>';
+  }
+  renderList();
+}
+
+function clearBoundary() {
+  customBoundaryItems = [];
+  document.getElementById('minLen').value = '';
+  document.getElementById('maxLen').value = '';
+  document.getElementById('boundaryPreview').innerHTML = '';
+  renderList();
+}
+
+var activeField = null;
+var activeCat = 'all';
+
+var grid = document.getElementById('fieldGrid');
+FIELDS.forEach(function(f) {
+  var btn = document.createElement('button');
+  btn.className = 'field-btn';
+  btn.innerHTML = '<span class="icon">' + f.icon + '</span><span class="name">' + f.name + '</span>';
+  btn.onclick = (function(fid, b){ return function(){ selectField(fid, b); }; })(f.id, btn);
+  grid.appendChild(btn);
+});
+
+function selectField(id, btn) {
+  activeField = id;
+  activeCat = 'all';
+  document.querySelectorAll('.field-btn').forEach(function(b){ b.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById('step2').style.display = '';
+  renderCatTabs();
+  renderList();
+}
+
+function renderCatTabs() {
+  var tabs = document.getElementById('catTabs');
+  tabs.innerHTML = CATS.map(function(c) {
+    return '<button class="cat-tab' + (c.id === activeCat ? ' active' : '') + '" onclick="selectCat(\'' + c.id + '\')">' + c.label + '</button>';
+  }).join('');
+}
+
+function selectCat(id) {
+  activeCat = id;
+  renderCatTabs();
+  renderList();
+}
+
+function renderList() {
+  var base = customBoundaryItems.concat(ALL_ITEMS);
+  var items = base.filter(function(item) {
+    return (activeField === 'all' || item.fields.indexOf(activeField) !== -1) &&
+           (activeCat === 'all' || item.cat === activeCat);
+  });
+  document.getElementById('resultCount').textContent = items.length + ' 件';
+  var list = document.getElementById('stringList');
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">該当する文字列がありません</div>';
+    return;
+  }
+  var html = '';
+  items.forEach(function(item, idx) {
+    var display = item.value === '' ? '（空文字）' : esc(item.value).substring(0, 300) + (item.value.length > 300 ? '...' : '');
+    html += '<div class="string-item">';
+    html += '<span class="cat-badge badge-' + item.cat + '">' + catLabel(item.cat) + '</span>';
+    html += '<div class="string-meta">';
+    html += '<div class="string-label">' + esc(item.label) + '</div>';
+    html += '<div class="string-value">' + display + '</div>';
+    html += '<div class="string-desc">' + esc(item.desc) + '</div>';
+    html += '</div>';
+    html += '<button class="copy-btn" data-idx="' + idx + '">コピー</button>';
+    html += '</div>';
+  });
+  list.innerHTML = html;
+  list.querySelectorAll('.copy-btn').forEach(function(btn) {
+    var idx = parseInt(btn.getAttribute('data-idx'));
+    btn.onclick = function() { copyStr(btn, items[idx].value); };
+  });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function catLabel(c) {
+  var m = {boundary:'境界値',special:'特殊文字',sql:'SQL',xss:'XSS',japanese:'日本語',emoji:'絵文字',unicode:'Unicode'};
+  return m[c] || c;
+}
+function copyStr(btn, val) {
+  navigator.clipboard.writeText(val).then(function() {
+    btn.textContent = 'コピー済!';
+    btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent = 'コピー'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+</script>
+</body>
+</html>
